@@ -14,6 +14,12 @@ This means if you want to make character change her face, if you want to fade th
 
 Animator can even change image's sprite so changing BG can be done in an Animator too! Let's do everything in an Animator. Because of this, I am not providing the command to change image, the command to fade out characters, etc. You must make them yourself in your Animator. Let's keep ink-VN minimal.
 
+## Main Concept : DIY
+
+ink-VN does not handle any screen resolution issue, does not care if your game is vertical or horizontal, etc. One thing you have to do is creating InkVNRunner game object and connect all the required components in the inspector, which you can build them however you like. (This is the point you have to make sure they are responsive, etc.)
+
+You might like this approach if you are a person like me, who rather build and understand your own game to its fullest than take in too many unknowns at once from a big framework. It might be slower than a more pre-made frameworks but I think it saves time later on while debugging.
+
 ## What I will not implement
 
 It will not support any branching, since my game does not need it. Seems pretty critical to everyone else! But that's open source projects, please contribute if you need it!
