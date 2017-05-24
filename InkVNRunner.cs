@@ -6,16 +6,16 @@ using System;
 using System.Text;
 using Ink.Runtime;
 
-public class InkVNRunner : MonoBehaviour {
+public partial class InkVNRunner : MonoBehaviour {
 
 	[Header("Required")]
     
 	//Triggers : Show Hide
 	public Animator talkPanelAnimator;
-    //Triggers : Show Hide Idle
+    //Triggers : Hide Idle
 	public Animator continueMarkerAnimator;
     //Triggers : Show Hide Change
-	public Animator namePanelAnimator;
+	public Animator characterNamePanelAnimator;
 
 	public Text talkPanelText;
 	public Text characterNameText;
@@ -24,6 +24,7 @@ public class InkVNRunner : MonoBehaviour {
 	[Header("Settings")]
 	[Tooltip("When the game cannot find any matching character names this will be used.")]
 	public Color defaultCharacterColor = Color.white;
+	public Color defaultTextColor = Color.white;
 
 	[Tooltip("Useful for debugging. Jumps to a knot and start ink-VN on awake.")]
 	public string autoStartAtKnot;
@@ -37,11 +38,8 @@ public class InkVNRunner : MonoBehaviour {
 	[Tooltip("The speed which text reveals. The unit is character per second.")]
 	public float textRevealSpeed;
 
-    [Tooltip("If enabled, an advance while the text is not finished yet will still skip to the next line.")]
-	public bool advanceThroughTextReveal;
-
 	[Tooltip("Whether to trigger a \"Change\" trigger or not when the speaker changes.")]
-	public bool characterNameChangeAnimation;
+	public bool characterNameChangeAnimation = true;
 
 	[Header("Tag Defines")]
 	public InkVNAnimator[] namedAnimators;
@@ -56,6 +54,12 @@ public class InkVNRunner : MonoBehaviour {
 	private TextUnit currentTextUnit;
 	private readonly Color transparent = new Color(0,0,0,0);
 	private StringBuilder stringBuilder;
+
+	private const string triggerHide = "Hide"; 
+	private const string triggerShow = "Show";
+	private const string triggerIdle = "Idle";
+
+	private bool isTalkPanelShowing = false;
 
 	void Awake()
 	{
@@ -83,33 +87,71 @@ public class InkVNRunner : MonoBehaviour {
     /// </summary>
 	public void AdvanceStory()
 	{
+		if(advanceStoryRoutine != null)
+		{
+            //TODO : Fast forward everything first before stopping
+			StopCoroutine(advanceStoryRoutine);
+		}
+		advanceStoryRoutine = AdvanceStoryRoutine();
+		StartCoroutine(advanceStoryRoutine);
+	}
+
+    private IEnumerator advanceStoryRoutine;
+	public IEnumerator AdvanceStoryRoutine()
+	{
         //You could not do anything while talk panel is in animation
 		if(talkPanelDelayRoutine != null)
 		{
-			return;
+			yield break;
 		}
 
 		//In the advance delay time, you can still fast forward.
 		if(textRevealRoutine != null)
 		{
 			TextRevealFastForward(currentTextUnit.text);
-			return;
+			yield break;
 		}
 
         //But you cannot advance.
 		if(advanceStoryDelayRoutine != null)
 		{
-			return;
+			yield break;
 		}
 
         if(story.canContinue)
 		{
 			string text = story.Continue().Trim();
+			List<string> currentTags = story.currentTags;
+
+			foreach(string tag in currentTags)
+			{
+				yield return StartCoroutine(EvaluateTag(tag));
+			}
+
+			previousTextUnit = currentTextUnit;
 			currentTextUnit = ParseToTextUnit(text);
 			//Debug.Log(currentTextUnit.characterName + " | " + currentTextUnit.text);
+
+            if(isTalkPanelShowing == false)
+			{
+				talkPanelAnimator.SetTrigger(triggerShow);
+				isTalkPanelShowing = true;
+			}
+
+			//Setup
             talkPanelText.text = currentTextUnit.text;
 			characterNameText.text = currentTextUnit.showingCharacterName;
 			characterNameText.color = currentTextUnit.characterColor;
+
+			if(previousTextUnit != null && (previousTextUnit.showingCharacterName != "" && currentTextUnit.showingCharacterName == ""))
+			{
+				characterNamePanelAnimator.SetTrigger(triggerHide);
+			}
+			else if(previousTextUnit != null && (previousTextUnit.showingCharacterName == "" && currentTextUnit.showingCharacterName != ""))
+			{
+				characterNamePanelAnimator.SetTrigger(triggerShow);
+			}
+			continueMarkerAnimator.SetTrigger(triggerHide);
 
             if(textRevealRoutine != null)
 			{
@@ -125,6 +167,13 @@ public class InkVNRunner : MonoBehaviour {
 			advanceStoryDelayRoutine = AdvanceStoryDelayRoutine();
 			StartCoroutine(advanceStoryDelayRoutine);
 		}
+		else
+		{
+			//Reached the end, hide the talk panel completely
+			characterNamePanelAnimator.SetTrigger(triggerHide);
+			talkPanelAnimator.SetTrigger(triggerHide);
+		}
+		yield break;
 	}
 
 	private IEnumerator talkPanelDelayRoutine;
@@ -152,11 +201,10 @@ public class InkVNRunner : MonoBehaviour {
 		//We want the information how many lines it takes.
 		//We have to wait so the text box renders the text. In that one frame, the color is transparent to hide them.
 		talkPanelText.text = fullText;
-		Color originalColor = talkPanelText.color;
 		talkPanelText.color = transparent;
 		yield return null;
 
-		talkPanelText.color = originalColor;
+		talkPanelText.color = defaultTextColor;
 
         //TextGenerator is now available! We will inserts line breaks manually now
 		TextGenerator textGenerator = talkPanelText.cachedTextGenerator;
@@ -180,6 +228,7 @@ public class InkVNRunner : MonoBehaviour {
 			yield return null;
 		}
 
+		continueMarkerAnimator.SetTrigger(triggerIdle);
 		textRevealRoutine = null;
 	}
 
@@ -188,6 +237,7 @@ public class InkVNRunner : MonoBehaviour {
 		if(textRevealRoutine != null)
 		{
 			StopCoroutine(textRevealRoutine);
+			continueMarkerAnimator.SetTrigger(triggerIdle);
 			textRevealRoutine = null;
 
 			talkPanelText.text = fullText;
@@ -217,7 +267,7 @@ public class InkVNRunner : MonoBehaviour {
 			}
 
             InkVNCharacter character = Array.Find(characters, c => c.CharacterName == realCharacterName);
-            Color characterColor = Color.white;
+            Color characterColor = defaultCharacterColor;
             if (character != null)
             {
                 characterColor = character.characterColor;
@@ -228,8 +278,8 @@ public class InkVNRunner : MonoBehaviour {
 		{
 			return new TextUnit(rawText);
 		}
-
 	}
+
 
     /// <summary>
     //This is the default behaviour. You have to override it.
@@ -250,7 +300,7 @@ public class InkVNRunner : MonoBehaviour {
 
 	}
 
-	private struct TextUnit
+	private class TextUnit
 	{
 		public string showingCharacterName;
 		public string realCharacterName; //real name which can be in parentheses
