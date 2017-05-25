@@ -26,7 +26,7 @@ ink-VN does not include ink, but you will require ink to use ink-VN so please ma
 
 I will make it as flexible as possible. As such, I think Animator's trigger is a good entry way to almost everything.
 
-This means if you want to make character change her face, if you want to fade the BG to black, etc. Whatever you want to do, do it in Animator's trigger. ink-VN can trigger those triggers and that's it! I believe in utilizing Unity's concept as much as possible. 
+This means if you want to make character change her face, if you want to fade the BG to black, etc. Whatever you want to do, do it in Animator's trigger. ink-VN can trigger those triggers and that's it! I believe in utilizing Unity's concept as much as possible. The animator will be commanded with ink's tags (#). The readed tags is just a string, and animator's trigger is based on string so I think this is perfect.
 
 Animator can even change image's sprite so changing BG can be done in an Animator too! Let's do everything in an Animator. Because of this, I am not providing the command to change image, the command to fade out characters, etc. You must make them yourself in your Animator. Let's keep ink-VN minimal.
 
