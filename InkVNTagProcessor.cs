@@ -8,10 +8,12 @@ using Ink.Runtime;
 
 public partial class InkVNRunner : MonoBehaviour{
 
+/* 
 	private InkVNCustomTag[] builtInCustomTags = {
 		new InkVNCustomTag("image-trigger", "trigger"),
 		new InkVNCustomTag("animation-trigger", "trigger")
 	};
+*/
 
 	private IEnumerator EvaluateTag(string tag)
 	{
